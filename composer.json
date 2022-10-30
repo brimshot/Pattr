@@ -1,0 +1,34 @@
+{
+    "name": "brimshot/phpattributes",
+    "description": "An easy way to work with attributes in PHP",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Chris Brim",
+            "email": "chris.brim@protonmail.com"
+        }
+    ],
+    "keywords": [
+        "php",
+        "attributes",
+        "library"
+    ],
+    "require": {
+        "php": ">=8.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^8.4 || ^9.3"
+    },
+    "autoload": {
+        "files": [
+            "src/PhpAttributes.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": { "brimshot\\phpattributes\\test\\": "test" }
+    },
+    "scripts": {
+        "test": "phpunit test"
+    }}
+
