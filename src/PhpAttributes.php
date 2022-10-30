@@ -41,6 +41,7 @@ namespace brimshot\PhpAttributes\internal {
 			// Fall through to null object return
 		}
 
+		// Return null object to allow execution to continue
 		return new \ReflectionClass(new class {});
 	}
 
@@ -94,6 +95,7 @@ namespace brimshot\PhpAttributes {
 	 */
 	function has_attribute(mixed $item, string|array $attribute_or_array_of_attributes, bool $matchChildAttributes = false) : bool
 	{
+		// todo: refactor
 		if(is_array($attribute_or_array_of_attributes)) {
 			foreach($attribute_or_array_of_attributes as $attribute) {
 				if(! _has_attribute($item, $attribute, $matchChildAttributes))
@@ -115,10 +117,7 @@ namespace brimshot\PhpAttributes {
 	 */
 	function has_attribute_callback(mixed $item, string $attribute, callable $callback) : bool
 	{
-		if(_has_attribute($item, $attribute))
-			return (!! $callback(get_attribute($item, $attribute)));
-
-		return false;
+		return ($attribute = get_attribute($item, $attribute))? (!! $callback($attribute)) : false;
 	}
 
 	/**
@@ -166,9 +165,9 @@ namespace brimshot\PhpAttributes {
 	 * @param callable $callback
 	 * @return array
 	 */
-	function get_attributes_callback(mixed $item, callable $callback) : array
+	function get_attribute_callback(mixed $item, string $attribute, callable $callback) : array
 	{
-		return array_filter(get_attributes($item), $callback);
+		return array_values(array_filter(get_attributes($item, [$attribute]), $callback));
 	}
 
 	/**
@@ -189,6 +188,7 @@ namespace brimshot\PhpAttributes {
 	 */
 	function get_class_methods_with_attribute_callback(object|string $object_or_class, string $attribute, callable $callback) : array
 	{
+		// todo: should accept an array
 		return array_values(array_filter(get_class_methods_with_attribute($object_or_class, $attribute), fn($m) => $callback(get_attribute([$object_or_class, $m], $attribute))));
 	}
 
@@ -209,6 +209,21 @@ namespace brimshot\PhpAttributes {
 	/**
 	 * @param object|string $object_or_class
 	 * @param string $attribute
+	 * @param callable $callback
+	 * @return array
+	 */
+	function get_object_properties_with_attribute_callback(object $object, string $attribute, callable $callback) : array
+	{
+		return array_reduce(
+			array_filter(array_keys(get_object_vars($object)), fn($p) => has_attribute_callback([$object, $p], $attribute, $callback)),
+			fn($accum, $p) => $accum + [$p => $object->$p],
+			[]
+		);
+	}
+
+	/**
+	 * @param object|string $object_or_class
+	 * @param string $attribute
 	 * @return array
 	 */
 	function get_class_properties_with_attribute(string $class, string|array $attribute_or_array_of_attributes) : array
@@ -220,7 +235,6 @@ namespace brimshot\PhpAttributes {
 		);
 	}
 
-
 	/**
 	 * @param object|string $object_or_class
 	 * @param string $attribute
@@ -229,8 +243,21 @@ namespace brimshot\PhpAttributes {
 	 */
 	function get_class_properties_with_attribute_callback(object|string $object_or_class, string $attribute, callable $callback) : array
 	{
-
+		return [];
 	}
 
+
+
+
+
+	function get_class_constants_with_attribute(string $class, string|array $attribute_or_array_of_attributes) : array
+	{
+		return [];
+	}
+
+	function get_class_constants_with_attribute_callback(string $class, string|array $attribute_or_array_of_attributes) : array
+	{
+		return [];
+	}
 
 }

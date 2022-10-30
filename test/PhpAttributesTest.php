@@ -5,14 +5,17 @@ namespace brimshot\PhpAttributes\Test;
 require_once __DIR__ . "/../src/PhpAttributes.php";
 
 use PHPUnit\Framework\TestCase;
+use function brimshot\PhpAttributes\get_attribute_callback;
 use function brimshot\PhpAttributes\get_class_methods_with_attribute;
 use function brimshot\PhpAttributes\get_class_methods_with_attribute_callback;
 use function brimshot\PhpAttributes\get_object_properties_with_attribute;
 use function brimshot\PhpAttributes\get_class_properties_with_attribute;
+use function brimshot\PhpAttributes\get_object_properties_with_attribute_callback;
 use function brimshot\PhpAttributes\has_attribute;
 use function brimshot\PhpAttributes\get_attribute;
 use function brimshot\PhpAttributes\get_attributes;
 use function brimshot\PhpAttributes\get_attribute_names;
+use function brimshot\PhpAttributes\has_attribute_callback;
 
 #region dummy test data
 
@@ -48,7 +51,7 @@ class RepeatableAttribute
 // ~ Classes
 
 #[FirstAttribute]
-#[SecondAttribute]
+#[SecondAttribute(1)]
 #[RepeatableAttribute(0)]
 #[RepeatableAttribute(1)]
 #[ChildAttribute]
@@ -60,7 +63,7 @@ class ClassWithAttributes
 	#[FirstAttribute]
 	public $classProperty = 1;
 
-	#[SecondAttribute]
+	#[SecondAttribute(1)]
 	public $secondClassProperty = 2;
 
 	#[FirstAttribute, ThirdAttribute]
@@ -271,6 +274,34 @@ final class PhpAttributesTest extends TestCase
 
 	#endregion
 
+	#region has_attribute_callback() tests
+
+	/**
+	 * @test
+	 */
+	public function has_attribute_callback_matches_on_callback()
+	{
+		$this->assertTrue(has_attribute_callback($this->ClassWithAttributes, SecondAttribute::class, fn($a) => $a->id == 1));
+	}
+
+	/**
+	 * @test
+	 */
+	public function has_attribute_callback_returns_false_when_callback_returns_false()
+	{
+		$this->assertFalse(has_attribute_callback($this->ClassWithAttributes, SecondAttribute::class, fn($a) => $a->id == 2));
+	}
+
+	/**
+	 * @test
+	 */
+	public function has_attribute_callback_returns_false_on_unknown_attribute()
+	{
+		$this->assertFalse(has_attribute_callback($this->ClassWithAttributes, UnusedAttribute::class, fn($a) => $a->id == 1));
+	}
+
+	#endregion
+
 
 	#region get_attribute() tests
 
@@ -391,7 +422,7 @@ final class PhpAttributesTest extends TestCase
 	{
 		$expectedAttributeInstances = [
 			new FirstAttribute(),
-			new SecondAttribute(),
+			new SecondAttribute(1),
 			new RepeatableAttribute(0),
 			new RepeatableAttribute(1),
 			new ChildAttribute()
@@ -413,6 +444,27 @@ final class PhpAttributesTest extends TestCase
 	}
 
 	#endregion
+
+
+	#region get_attributes_callback() tests
+
+	
+
+	/**
+	 * @test
+	 */
+	public function get_attributes_callback_returns_only_matching_on_repeated_attributes()
+	{
+		$expectedAttributes = [
+			new RepeatableAttribute(1)
+		];
+
+		$this->assertEquals($expectedAttributes, get_attribute_callback($this->ClassWithAttributes, RepeatableAttribute::class, fn($a) => $a->value == 1));
+	}
+
+	#endregion
+
+
 
 	#region get_attribute_names() tests
 
@@ -553,6 +605,23 @@ final class PhpAttributesTest extends TestCase
 	public function get_class_properties_returns_empty_array_on_class_with_no_attributes()
 	{
 		$this->assertEquals([], get_class_properties_with_attribute(ClassWithoutAttributes::class, FirstAttribute::class));
+	}
+
+	#endregion
+
+
+	#region get_object_properties_with_attribute_callback() tests
+
+	/**
+	 * @test
+	 */
+	public function get_object_properties_with_attribute_callback_filters_on_callback()
+	{
+		$expectedResult = [
+			'secondClassProperty'=> 2
+		];
+
+		$this->assertEquals($expectedResult, get_object_properties_with_attribute_callback($this->ClassWithAttributes, SecondAttribute::class, fn($a) => $a->id == 1));
 	}
 
 	#endregion
