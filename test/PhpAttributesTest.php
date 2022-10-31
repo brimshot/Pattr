@@ -4,18 +4,24 @@ namespace brimshot\PhpAttributes\Test;
 
 require_once __DIR__ . "/../src/PhpAttributes.php";
 
+use Couchbase\GetAndTouchOptions;
 use PHPUnit\Framework\TestCase;
-use function brimshot\PhpAttributes\get_attribute_callback;
+use function brimshot\PhpAttributes\get_attributes_callback;
 use function brimshot\PhpAttributes\get_class_methods_with_attribute;
 use function brimshot\PhpAttributes\get_class_methods_with_attribute_callback;
 use function brimshot\PhpAttributes\get_object_properties_with_attribute;
 use function brimshot\PhpAttributes\get_class_properties_with_attribute;
 use function brimshot\PhpAttributes\get_object_properties_with_attribute_callback;
+use function brimshot\PhpAttributes\get_class_properties_with_attribute_callback;
 use function brimshot\PhpAttributes\has_attribute;
 use function brimshot\PhpAttributes\get_attribute;
 use function brimshot\PhpAttributes\get_attributes;
 use function brimshot\PhpAttributes\get_attribute_names;
 use function brimshot\PhpAttributes\has_attribute_callback;
+use function brimshot\PhpAttributes\does_not_have_attribute;
+use function brimshot\PhpAttributes\get_class_constants_with_attribute;
+use function brimshot\PhpAttributes\get_class_constants_with_attribute_callback;
+
 
 #region dummy test data
 
@@ -57,7 +63,7 @@ class RepeatableAttribute
 #[ChildAttribute]
 class ClassWithAttributes
 {
-	#[FirstAttribute]
+	#[FirstAttribute, SecondAttribute(1)]
 	const CLASS_CONSTANT = '1';
 
 	#[FirstAttribute]
@@ -195,9 +201,9 @@ final class PhpAttributesTest extends TestCase
 	/**
 	 * @test
 	 */
-	public function has_attribute_does_not_match_children_by_default()
+	public function has_attribute_matches_children_by_default()
 	{
-		$this->assertFalse(has_attribute($this->ClassWithAttributes, ParentAttribute::class));
+		$this->assertTrue(has_attribute($this->ClassWithAttributes, ParentAttribute::class));
 	}
 
 	/**
@@ -303,6 +309,59 @@ final class PhpAttributesTest extends TestCase
 	#endregion
 
 
+	#region does_not_have_attribute() tests
+
+	/**
+	 * @test
+	 */
+	public function does_not_have_attribute_returns_true_when_item_does_not_have_provided_attribute()
+	{
+		$this->assertTrue(does_not_have_attribute($this->ClassWithAttributes, UnusedAttribute::class));
+	}
+
+	/**
+	 * @test
+	 */
+	public function does_not_have_attribute_returns_true_when_item_has_attribute()
+	{
+		$this->assertFalse(does_not_have_attribute($this->ClassWithAttributes, FirstAttribute::class));
+	}
+
+	/**
+	 * @test
+	 */
+	public function does_not_have_attribute_returns_false_when_item_has_some_of_provided_list()
+	{
+		$this->assertFalse(does_not_have_attribute($this->ClassWithAttributes, [UnusedAttribute::class, FirstAttribute::class]));
+	}
+
+	/**
+	 * @test
+	 */
+	public function does_not_have_attribute_returns_true_when_no_attributes_in_provided_list_are_on_item()
+	{
+		$this->assertTrue(does_not_have_attribute($this->ClassWithAttributes, [UnusedAttribute::class, ThirdAttribute::class]));
+	}
+
+	/**
+	 * @test
+	 */
+	public function does_not_have_attribute_matches_child_attributes()
+	{
+		$this->assertFalse(does_not_have_attribute($this->ClassWithAttributes, ParentAttribute::class));
+	}
+
+	/**
+	 * @test
+	 */
+	public function does_not_have_attribute_strict_mode_for_child_attributes()
+	{
+		$this->assertTrue(does_not_have_attribute($this->ClassWithAttributes, ParentAttribute::class, false));
+	}
+
+	#endregion
+
+
 	#region get_attribute() tests
 
 	/**
@@ -335,6 +394,22 @@ final class PhpAttributesTest extends TestCase
 	public function get_attribute_returns_instance_when_attribute_class_name_provided()
 	{
 		$this->assertInstanceOf(FirstAttribute::class, get_attribute($this->ClassWithAttributes, FirstAttribute::class));
+	}
+
+	/**
+	 * @test
+	 */
+	public function get_attribute_matches_child_attributes_by_default()
+	{
+		$this->assertInstanceOf(ChildAttribute::class, get_attribute($this->ClassWithAttributes, ParentAttribute::class));
+	}
+
+	/**
+	 * @test
+	 */
+	public function get_attribute_uses_strict_mode_when_match_child_attributes_is_off()
+	{
+		$this->assertNull(get_attribute($this->ClassWithAttributes, ParentAttribute::class, 0, false));
 	}
 
 	/**
@@ -402,11 +477,6 @@ final class PhpAttributesTest extends TestCase
 	}
 
 
-	#endregion
-
-
-	#region get_attributes() test
-
 	/**
 	 * @test
 	 */
@@ -436,30 +506,48 @@ final class PhpAttributesTest extends TestCase
 	 */
 	public function get_attributes_filters_by_passed_in_attribute_list()
 	{
-		$expectedAttributeInstances = [
+		$expectedResult = [
 			new FirstAttribute()
 		];
 
-		$this->assertEquals($expectedAttributeInstances, get_attributes($this->ClassWithAttributes, [FirstAttribute::class]));
+		$this->assertEquals($expectedResult, get_attributes($this->ClassWithAttributes, [FirstAttribute::class]));
 	}
 
-	#endregion
+	#endregion get_attribute() tests
 
 
 	#region get_attributes_callback() tests
 
-	
+	/**
+	 * @test
+	 */
+	public function get_attributes_callback_returns_correct_array_when_callback_passes()
+	{
+		$expectedResult = [
+			new SecondAttribute(1)
+		];
+
+		$this->assertEquals($expectedResult, get_attributes_callback($this->ClassWithAttributes, SecondAttribute::class, fn($a) => $a->id == 1));
+	}
+
+	/**
+	 * @test
+	 */
+	public function get_attributes_callback_returns_empty_array_when_callback_returns_false()
+	{
+		$this->assertEquals([], get_attributes_callback($this->ClassWithAttributes, SecondAttribute::class, fn($a) => $a->id == 123));
+	}
 
 	/**
 	 * @test
 	 */
 	public function get_attributes_callback_returns_only_matching_on_repeated_attributes()
 	{
-		$expectedAttributes = [
+		$expectedResult = [
 			new RepeatableAttribute(1)
 		];
 
-		$this->assertEquals($expectedAttributes, get_attribute_callback($this->ClassWithAttributes, RepeatableAttribute::class, fn($a) => $a->value == 1));
+		$this->assertEquals($expectedResult, get_attributes_callback($this->ClassWithAttributes, RepeatableAttribute::class, fn($a) => $a->value == 1));
 	}
 
 	#endregion
@@ -484,7 +572,25 @@ final class PhpAttributesTest extends TestCase
 		$this->assertEquals($expectedAttributeNames, get_attribute_names($this->ClassWithAttributes));
 	}
 
+	/**
+	 * @test
+	 */
+	public function get_attribute_names_returns_short_names()
+	{
+		$expectedAttributeNames = [
+			'FirstAttribute',
+			'SecondAttribute',
+			'RepeatableAttribute',
+			'RepeatableAttribute',
+			'ChildAttribute'
+		];
+
+		$this->assertEquals($expectedAttributeNames, get_attribute_names($this->ClassWithAttributes, true));
+	}
+
+
 	#endregion
+
 
 	#region get_class_methods_with_attribute() tests
 
@@ -535,7 +641,7 @@ final class PhpAttributesTest extends TestCase
 	#endregion
 
 
-	#region get_class_properties_with_attribute() tests
+	#region get_object_properties_with_attribute() tests
 
 	/**
 	 * @test
@@ -574,6 +680,29 @@ final class PhpAttributesTest extends TestCase
 		$this->assertEquals($expectedResult, get_object_properties_with_attribute($this->ClassWithAttributes, ['firstattribute', 'thirdattribute']));
 	}
 
+	#endregion
+
+
+	#region get_object_properties_with_attribute_callback() tests
+
+	/**
+	 * @test
+	 */
+	public function get_object_properties_with_attribute_callback_filters_on_callback()
+	{
+		$expectedResult = [
+			'secondClassProperty'=> 2
+		];
+
+		$this->assertEquals($expectedResult, get_object_properties_with_attribute_callback($this->ClassWithAttributes, SecondAttribute::class, fn($a) => $a->id == 1));
+	}
+
+	#endregion get_object_properties_with_attribute_callback() tests
+
+
+
+	#region get_class_properties_with_attribute() tests
+
 	/**
 	 * @test
 	 */
@@ -607,24 +736,104 @@ final class PhpAttributesTest extends TestCase
 		$this->assertEquals([], get_class_properties_with_attribute(ClassWithoutAttributes::class, FirstAttribute::class));
 	}
 
-	#endregion
+	#endregion get_class_properties_with_attribute() tests
 
 
-	#region get_object_properties_with_attribute_callback() tests
+
+	#region get_class_properties_with_attribute_callback() tests
 
 	/**
 	 * @test
 	 */
-	public function get_object_properties_with_attribute_callback_filters_on_callback()
+	public function get_class_properties_callback_returns_empty_array_on_class_with_no_attributes()
 	{
-		$expectedResult = [
-			'secondClassProperty'=> 2
-		];
-
-		$this->assertEquals($expectedResult, get_object_properties_with_attribute_callback($this->ClassWithAttributes, SecondAttribute::class, fn($a) => $a->id == 1));
+		$this->assertEquals([], get_class_properties_with_attribute_callback(ClassWithoutAttributes::class, FirstAttribute::class, fn($a) => $a->id == 1));
 	}
 
-	#endregion
+	/**
+	 * @test
+	 */
+	public function get_class_properties_callback_returns_expected()
+	{
+		$expectedResult = [
+			'secondClassProperty'
+		];
+
+		$this->assertEquals($expectedResult, get_class_properties_with_attribute_callback(ClassWithAttributes::class, SecondAttribute::class, fn($a) => $a->id == 1));
+	}
+
+	/**
+	 * @test
+	 */
+	public function get_class_properties_callback_returns_empty_array_when_callback_does_not_pass()
+	{
+		$this->assertEquals([], get_class_properties_with_attribute_callback(ClassWithAttributes::class, SecondAttribute::class, fn($a) => $a->id == 1000));
+	}
+
+	#endregion get_class_properties_with_attribute_callback() tests
+
+
+	#region get_class_constants_with_attribute() tests
+
+	/**
+	 * @test
+	 */
+	public function get_class_constants_with_attribute_returns_empty_array_on_no_matches()
+	{
+		$this->assertEquals([], get_class_constants_with_attribute($this->ClassWithAttributes, UnusedAttribute::class));
+	}
+
+	/**
+	 * @test
+	 */
+	public function get_class_constants_with_attribute_matches_single_attribute()
+	{
+		$expectedResult = [
+			'CLASS_CONSTANT'=> 1
+		];
+
+		$this->assertEquals($expectedResult, get_class_constants_with_attribute($this->ClassWithAttributes, FirstAttribute::class));
+	}
+
+	/**
+	 * @test
+	 */
+	public function get_class_constants_with_attribute_matches_array_of_attributes()
+	{
+		$expectedResult = [
+			'CLASS_CONSTANT'=> 1
+		];
+
+		$this->assertEquals($expectedResult, get_class_constants_with_attribute($this->ClassWithAttributes, [FirstAttribute::class, SecondAttribute::class]));
+	}
+
+	#endregion get_class_constants_with_attribute() tests
+
+
+
+	#region get_class_constants_with_attribute_callback() tests
+
+	/**
+	 * @test
+	 */
+	public function get_class_constants_with_attribute_callback_returns_empty_array_when_no_results_pass_callback()
+	{
+		$this->assertEquals([], get_class_constants_with_attribute_callback($this->ClassWithAttributes, SecondAttribute::class, fn($a) => $a->id == 100));
+	}
+
+	/**
+	 * @test
+	 */
+	public function get_class_constants_with_attribute_callback_returns_constants_that_pass_callback()
+	{
+		$expectedResult = [
+			'CLASS_CONSTANT'=> 1
+		];
+
+		$this->assertEquals($expectedResult, get_class_constants_with_attribute_callback($this->ClassWithAttributes, SecondAttribute::class, fn($a) => $a->id == 1));
+	}
+
+	#endregion get_class_constants_with_attribute_callback() tests
 }
 
 #endregion
