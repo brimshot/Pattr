@@ -96,14 +96,8 @@ namespace brimshot\PhpAttributes {
 	 */
 	function has_attribute(mixed $item, string|array $attribute_or_array_of_attributes, bool $matchChildAttributes = true) : bool
 	{
-		// todo: refactor
 		if(is_array($attribute_or_array_of_attributes)) {
-			foreach($attribute_or_array_of_attributes as $attribute) {
-				if(! _has_attribute($item, $attribute, $matchChildAttributes))
-					return false;
-			}
-
-			return true;
+			return array_filter($attribute_or_array_of_attributes, fn($a) => _has_attribute($item, $a, $matchChildAttributes)) == $attribute_or_array_of_attributes;
 		}
 
 		return _has_attribute($item, $attribute_or_array_of_attributes, $matchChildAttributes);
@@ -113,11 +107,12 @@ namespace brimshot\PhpAttributes {
 	 * @param mixed $item
 	 * @param string $attribute
 	 * @param callable $callback
+	 * @param $matchChildAttributes
 	 * @return bool
 	 */
-	function has_attribute_callback(mixed $item, string $attribute, callable $callback) : bool
+	function has_attribute_callback(mixed $item, string $attribute, callable $callback, $matchChildAttributes = true) : bool
 	{
-		return ($attribute = get_attribute($item, $attribute))? (!! $callback($attribute)) : false;
+		return ($instance = get_attribute($item, $attribute, $matchChildAttributes))? (!! $callback($instance)) : false;
 	}
 
 	/**
@@ -129,16 +124,10 @@ namespace brimshot\PhpAttributes {
 	function does_not_have_attribute(mixed $item, string|array $attribute_or_array_of_attributes, bool $matchChildAttributes = true) : bool
 	{
 		if(is_array($attribute_or_array_of_attributes)) {
-			foreach($attribute_or_array_of_attributes as $attribute) {
-				if(_has_attribute($item, $attribute, $matchChildAttributes))
-					return false;
-			}
-
-			return true;
+			return array_filter($attribute_or_array_of_attributes, fn($a) => _has_attribute($item, $a, $matchChildAttributes)) == [];
 		}
 
 		return ! _has_attribute($item, $attribute_or_array_of_attributes, $matchChildAttributes);
-
 	}
 
 	/**
@@ -156,16 +145,16 @@ namespace brimshot\PhpAttributes {
 	 * @param mixed $item
 	 * @param string $attribute
 	 * @param int $index
-	 * @return \object|null
+	 * @param bool $matchChildAttributes
+	 * @return object|null
 	 */
-	function get_attribute(mixed $item, string $attribute, int $index = 0, $matchChildAttributes = true) : ?object
+	function get_attribute(mixed $item, string $attribute, bool $matchChildAttributes = true, int $index = 0) : ?object
 	{
-		// todo: what happens when you pass in index 2 and there's only one attribute
-		// todo: refactor maybe
 		foreach((_reflector_factory($item))->getAttributes() as $a) {
-			if(((strtolower($attribute) == _short_class_name($a->getName())) || ($matchChildAttributes && (_safe_new_instance($a) instanceof $attribute)))) {
-				if(! $index)
+			if((! strcasecmp($a->getName(), $attribute)) || (! strcasecmp(strtolower($attribute), _short_class_name($a->getName())) || ($matchChildAttributes && (is_subclass_of($a->getName(), $attribute))))) {
+				if(! $index) {
 					return _safe_new_instance($a);
+				}
 				$index--;
 			}
 		}
@@ -173,89 +162,109 @@ namespace brimshot\PhpAttributes {
 		return null;
 	}
 
-	/**
-	 * @param mixed $item
-	 * @return array
-	 */
-	function get_attributes(mixed $item, array $attribute_list = []) : array
-	{
-		// todo: this needs to account for children
-
-		$allAttributes = array_filter(array_map(fn($a) => _safe_new_instance($a), _reflector_factory($item)->getAttributes()), fn($a)=> !is_null($a));
-
-		return empty($attribute_list)? $allAttributes : array_filter($allAttributes, fn($a) => in_array(get_class($a), $attribute_list) || in_array(_short_class_name(get_class($a)), $attribute_list));
-	}
+	// todo: get_attributes_callback ... ?
 
 	/**
 	 * @param mixed $item
+	 * @return array
+	 */
+	function get_attributes(mixed $item, array $attribute_list = [], $matchChildAttributes = true) : array
+	{
+		$res = $allItemAttributes = _reflector_factory($item)->getAttributes();
+
+		if(! empty($attribute_list)) {
+			$res = [];
+			foreach ($allItemAttributes as $itemAttr) {
+				if (in_array($itemAttr->getName(), $attribute_list)
+					|| in_array(_short_class_name($itemAttr->getName()), array_map(fn($filterAttr) => _short_class_name($filterAttr), $attribute_list))
+					|| ($matchChildAttributes && (! empty(array_filter($attribute_list, fn($filterAttr) => is_subclass_of($itemAttr->getName(), $filterAttr))))))
+				{
+						$res[] = $itemAttr;
+				}
+			}
+		}
+
+		return array_filter(array_map(fn($a) => _safe_new_instance($a), $res), fn($a)=> !is_null($a));
+	}
+
+	/**
+	 * @param mixed $item
+	 * @param string $attribute
 	 * @param callable $callback
+	 * @param $matchChildAttributes
 	 * @return array
 	 */
-	function get_attributes_callback(mixed $item, string $attribute, callable $callback) : array
+	function get_attributes_callback(mixed $item, string $attribute, callable $callback, $matchChildAttributes = true) : array
 	{
-		return array_values(array_filter(get_attributes($item, [$attribute]), $callback));
+		return array_values(array_filter(get_attributes($item, [$attribute], $matchChildAttributes), $callback));
 	}
 
 	/**
 	 * @param object|string $object_or_class
-	 * @param string $attribute
+	 * @param string|array $attribute_or_array_of_attributes
+	 * @param bool $matchChildAttributes
 	 * @return array
 	 */
-	function get_class_methods_with_attribute(object|string $object_or_class, string|array $attribute_or_array_of_attributes) : array
+	function get_class_methods_with_attribute(object|string $object_or_class, string|array $attribute_or_array_of_attributes, bool $matchChildAttributes = true) : array
 	{
-		return array_values(array_filter(get_class_methods($object_or_class), fn($m) => has_attribute([$object_or_class, $m], $attribute_or_array_of_attributes)));
+		return array_values(array_filter(get_class_methods($object_or_class), fn($m) => has_attribute([$object_or_class, $m], $attribute_or_array_of_attributes, $matchChildAttributes)));
 	}
 
 	/**
 	 * @param object|string $object_or_class
 	 * @param string $attribute
 	 * @param callable $callback
+	 * @param bool $matchChildAttributes
 	 * @return array
 	 */
-	function get_class_methods_with_attribute_callback(object|string $object_or_class, string $attribute, callable $callback) : array
+	function get_class_methods_with_attribute_callback(object|string $object_or_class, string $attribute, callable $callback, bool $matchChildAttributes = true) : array
 	{
-		// todo: should accept an array
-		return array_values(array_filter(get_class_methods_with_attribute($object_or_class, $attribute), fn($m) => $callback(get_attribute([$object_or_class, $m], $attribute))));
+		return array_values(array_filter(get_class_methods_with_attribute($object_or_class, $attribute, $matchChildAttributes), fn($m) => $callback(get_attribute([$object_or_class, $m], $attribute))));
 	}
 
 	/**
-	 * @param object|string $object_or_class
-	 * @param string $attribute
+	 * @param object $object
+	 * @param string|array $attribute_or_array_of_attributes
+	 * @param bool $matchChildAttributes
 	 * @return array
 	 */
-	function get_object_properties_with_attribute(object $object, string|array $attribute_or_array_of_attributes) : array
+	function get_object_properties_with_attribute(object $object, string|array $attribute_or_array_of_attributes, bool $matchChildAttributes = true) : array
 	{
+			// todo: test this with repeated attributes
+
 			return array_reduce(
-				array_filter(array_keys(get_object_vars($object)), fn($p) => has_attribute([$object, $p], $attribute_or_array_of_attributes)),
+				array_filter(array_keys(get_object_vars($object)), fn($p) => has_attribute([$object, $p], $attribute_or_array_of_attributes, $matchChildAttributes)),
 				fn($accum, $p) => $accum + [$p => $object->$p],
 				[]
 			);
 	}
 
 	/**
-	 * @param object|string $object_or_class
+	 * @param object $object
 	 * @param string $attribute
 	 * @param callable $callback
+	 * @param $matchChildAttributes
 	 * @return array
 	 */
-	function get_object_properties_with_attribute_callback(object $object, string $attribute, callable $callback) : array
+	function get_object_properties_with_attribute_callback(object $object, string $attribute, callable $callback, $matchChildAttributes = true) : array
 	{
 		return array_reduce(
-			array_filter(array_keys(get_object_vars($object)), fn($p) => has_attribute_callback([$object, $p], $attribute, $callback)),
+			array_filter(array_keys(get_object_vars($object)), fn($p) => has_attribute_callback([$object, $p], $attribute, $callback, $matchChildAttributes)),
 			fn($accum, $p) => $accum + [$p => $object->$p],
 			[]
 		);
 	}
 
 	/**
-	 * @param object|string $object_or_class
-	 * @param string $attribute
+	 * @param string $class
+	 * @param string|array $attribute_or_array_of_attributes
+	 * @param bool $matchChildAttributes
 	 * @return array
 	 */
-	function get_class_properties_with_attribute(string $class, string|array $attribute_or_array_of_attributes) : array
+	function get_class_properties_with_attribute(string $class, string|array $attribute_or_array_of_attributes, bool $matchChildAttributes = true) : array
 	{
 		return array_reduce(
-			array_filter(array_keys(get_class_vars($class)), fn($p) => has_attribute([$class, $p], $attribute_or_array_of_attributes)),
+			array_filter(array_keys(get_class_vars($class)), fn($p) => has_attribute([$class, $p], $attribute_or_array_of_attributes, $matchChildAttributes)),
 			fn($accum, $p) => array_merge($accum, [$p]),
 			[]
 		);
@@ -269,6 +278,8 @@ namespace brimshot\PhpAttributes {
 	 */
 	function get_class_properties_with_attribute_callback(string $class, string $attribute, callable $callback) : array
 	{
+		// todo: this should really match children......
+
 		return array_reduce(
 			array_filter(array_keys(get_class_vars($class)), fn($p) => has_attribute_callback([$class, $p], $attribute, $callback)),
 			fn($accum, $p) => array_merge($accum, [$p]),
@@ -276,17 +287,19 @@ namespace brimshot\PhpAttributes {
 		);
 	}
 
+
 	/**
-	 * @param string $class_or_object
+	 * @param string|object $class_or_object
 	 * @param string|array $attribute_or_array_of_attributes
+	 * @param bool $matchChildAttributes
 	 * @return array
 	 */
-	function get_class_constants_with_attribute(string|object $class_or_object, string|array $attribute_or_array_of_attributes) : array
+	function get_class_constants_with_attribute(string|object $class_or_object, string|array $attribute_or_array_of_attributes, bool $matchChildAttributes = true) : array
 	{
 		$reflection = _reflector_factory($class_or_object);
 
 		return array_reduce(
-			array_filter(array_keys($reflection->getConstants()), fn($constName) => has_attribute([$class_or_object, $constName], $attribute_or_array_of_attributes)),
+			array_filter(array_keys($reflection->getConstants()), fn($constName) => has_attribute([$class_or_object, $constName], $attribute_or_array_of_attributes, $matchChildAttributes)),
 			fn($accum, $constName) => $accum + [$constName => $reflection->getConstant($constName)],
 			[]
 		);
@@ -296,19 +309,18 @@ namespace brimshot\PhpAttributes {
 	 * @param string|object $class_or_object
 	 * @param string $attribute
 	 * @param callable $callback
+	 * @param bool $matchAttributeChildren
 	 * @return array
 	 */
-	function get_class_constants_with_attribute_callback(string|object $class_or_object, string $attribute, callable $callback) : array
+	function get_class_constants_with_attribute_callback(string|object $class_or_object, string $attribute, callable $callback, bool $matchAttributeChildren = true) : array
 	{
 		$reflection = _reflector_factory($class_or_object);
 
 		return array_reduce(
-			array_filter(array_keys($reflection->getConstants()), fn($constName) => has_attribute_callback([$class_or_object, $constName], $attribute, $callback)),
+			array_filter(array_keys($reflection->getConstants()), fn($constName) => has_attribute_callback([$class_or_object, $constName], $attribute, $callback, $matchAttributeChildren)),
 			fn($accum, $constName) => $accum + [$constName => $reflection->getConstant($constName)],
 			[]
 		);
 	}
-
-
 
 }
