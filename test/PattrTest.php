@@ -1,29 +1,29 @@
 <?php
 
-namespace brimshot\PhpAttributes\test;
+namespace brimshot\Pattr\test;
 
-require_once __DIR__ . "/../src/PhpAttributes.php";
+require_once __DIR__ . "/../src/Pattr.php";
 require_once "sampledata.php";
 
 use PHPUnit\Framework\TestCase;
-use function brimshot\PhpAttributes\get_attributes_callback;
-use function brimshot\PhpAttributes\get_class_methods_with_attribute;
-use function brimshot\PhpAttributes\get_class_methods_with_attribute_callback;
-use function brimshot\PhpAttributes\get_object_properties_with_attribute;
-use function brimshot\PhpAttributes\get_class_properties_with_attribute;
-use function brimshot\PhpAttributes\get_object_properties_with_attribute_callback;
-use function brimshot\PhpAttributes\get_class_properties_with_attribute_callback;
-use function brimshot\PhpAttributes\has_attribute;
-use function brimshot\PhpAttributes\get_attribute;
-use function brimshot\PhpAttributes\get_attributes;
-use function brimshot\PhpAttributes\get_attribute_names;
-use function brimshot\PhpAttributes\has_attribute_callback;
-use function brimshot\PhpAttributes\does_not_have_attribute;
-use function brimshot\PhpAttributes\get_class_constants_with_attribute;
-use function brimshot\PhpAttributes\get_class_constants_with_attribute_callback;
+use function brimshot\Pattr\get_attributes_callback;
+use function brimshot\Pattr\get_class_methods_with_attribute;
+use function brimshot\Pattr\get_class_methods_with_attribute_callback;
+use function brimshot\Pattr\get_object_properties_with_attribute;
+use function brimshot\Pattr\get_class_properties_with_attribute;
+use function brimshot\Pattr\get_object_properties_with_attribute_callback;
+use function brimshot\Pattr\get_class_properties_with_attribute_callback;
+use function brimshot\Pattr\has_attribute;
+use function brimshot\Pattr\get_attribute;
+use function brimshot\Pattr\get_attributes;
+use function brimshot\Pattr\get_attribute_names;
+use function brimshot\Pattr\has_attribute_callback;
+use function brimshot\Pattr\does_not_have_attribute;
+use function brimshot\Pattr\get_class_constants_with_attribute;
+use function brimshot\Pattr\get_class_constants_with_attribute_callback;
 
 
-final class PhpAttributesTest extends TestCase
+final class PattrTest extends TestCase
 {
 	private $ClassWithAttributes;
 	private $NoAttributesClass;
@@ -67,14 +67,6 @@ final class PhpAttributesTest extends TestCase
 	public function has_attribute_returns_false_when_item_is_two_entry_array_but_does_not_resolve_to_anything()
 	{
 		$this->assertFalse(has_attribute(['lorem ipsum dolor sit amet', 'consectetuer'], FirstAttribute::class));
-	}
-
-	/**
-	 * @test
-	 */
-	public function has_attribute_returns_true_when_attribute_passed_as_class_path()
-	{
-		$this->assertTrue(has_attribute($this->ClassWithAttributes, FirstAttribute::class));
 	}
 
 	/**
@@ -140,6 +132,23 @@ final class PhpAttributesTest extends TestCase
 	{
 		$this->assertTrue(has_attribute($this->ClassWithAttributes, [FirstAttribute::class, SecondAttribute::class]));
 	}
+
+	/**
+	 * @test
+	 */
+	public function has_attribute_works_on_objects()
+	{
+		$this->assertTrue(has_attribute($this->ClassWithAttributes, FirstAttribute::class));
+	}
+
+	/**
+	 * @test
+	 */
+	public function has_attribute_works_on_classes()
+	{
+		$this->assertTrue(has_attribute(ClassWithAttributes::class, FirstAttribute::class));
+	}
+
 
 	/**
 	 * @test
@@ -658,7 +667,7 @@ final class PhpAttributesTest extends TestCase
 			RepeatableAttribute::class,
 			RepeatableAttribute::class,
 			ChildAttribute::class,
-			'brimshot\PhpAttributes\test\UndeclaredAttribute'
+			'brimshot\Pattr\test\UndeclaredAttribute'
 		];
 
 		$this->assertEquals($expectedAttributeNames, get_attribute_names($this->ClassWithAttributes));
@@ -770,6 +779,14 @@ final class PhpAttributesTest extends TestCase
 	/**
 	 * @test
 	 */
+	public function get_object_properties_does_not_work_on_private_properties()
+	{
+		$this->assertEquals([], get_object_properties_with_attribute($this->ClassWithAttributes, FourthAttribute::class));
+	}
+
+	/**
+	 * @test
+	 */
 	public function get_object_properties_with_attribute_filter_on_array_of_attributes_on_instantiated_class()
 	{
 		$expectedResult = [
@@ -872,6 +889,13 @@ final class PhpAttributesTest extends TestCase
 		$this->assertEquals($expectedResult, get_class_properties_with_attribute(ClassWithAttributes::class, SecondAttribute::class));
 	}
 
+	/**
+	 * @test
+	 */
+	public function get_class_properties_does_not_work_on_private_properties()
+	{
+		$this->assertEquals([], get_class_properties_with_attribute(ClassWithAttributes::class, FourthAttribute::class));
+	}
 
 	/**
 	 * @test
@@ -1023,5 +1047,3 @@ final class PhpAttributesTest extends TestCase
 
 	#endregion get_class_constants_with_attribute_callback() tests
 }
-
-#endregion

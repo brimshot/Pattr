@@ -1,6 +1,8 @@
 <?php
 
-namespace brimshot\PhpAttributes\internal {
+/* (c) Chris Brim 2022 - see LICENSE file */
+
+namespace brimshot\Pattr\internal {
 
 	/**
 	 * @param mixed $item
@@ -81,12 +83,12 @@ namespace brimshot\PhpAttributes\internal {
 
 }
 
-namespace brimshot\PhpAttributes {
+namespace brimshot\Pattr {
 
-	use function brimshot\PhpAttributes\internal\_reflector_factory;
-	use function brimshot\PhpAttributes\internal\_safe_new_instance;
-	use function brimshot\PhpAttributes\internal\_has_attribute;
-	use function brimshot\PhpAttributes\internal\_short_class_name;
+	use function brimshot\Pattr\internal\_reflector_factory;
+	use function brimshot\Pattr\internal\_safe_new_instance;
+	use function brimshot\Pattr\internal\_has_attribute;
+	use function brimshot\Pattr\internal\_short_class_name;
 
 	/**
 	 * @param mixed $item
@@ -230,8 +232,6 @@ namespace brimshot\PhpAttributes {
 	 */
 	function get_object_properties_with_attribute(object $object, string|array $attribute_or_array_of_attributes, bool $matchChildAttributes = true) : array
 	{
-			// todo: test this with repeated attributes
-
 			return array_reduce(
 				array_filter(array_keys(get_object_vars($object)), fn($p) => has_attribute([$object, $p], $attribute_or_array_of_attributes, $matchChildAttributes)),
 				fn($accum, $p) => $accum + [$p => $object->$p],
@@ -248,6 +248,8 @@ namespace brimshot\PhpAttributes {
 	 */
 	function get_object_properties_with_attribute_callback(object $object, string $attribute, callable $callback, $matchChildAttributes = true) : array
 	{
+		// todo: unit tests on matching child properties
+
 		return array_reduce(
 			array_filter(array_keys(get_object_vars($object)), fn($p) => has_attribute_callback([$object, $p], $attribute, $callback, $matchChildAttributes)),
 			fn($accum, $p) => $accum + [$p => $object->$p],
@@ -271,17 +273,16 @@ namespace brimshot\PhpAttributes {
 	}
 
 	/**
-	 * @param object|string $object_or_class
+	 * @param string $class
 	 * @param string $attribute
 	 * @param callable $callback
+	 * @param $matchChildAttributes
 	 * @return array
 	 */
-	function get_class_properties_with_attribute_callback(string $class, string $attribute, callable $callback) : array
+	function get_class_properties_with_attribute_callback(string $class, string $attribute, callable $callback, $matchChildAttributes = true) : array
 	{
-		// todo: this should really match children......
-
 		return array_reduce(
-			array_filter(array_keys(get_class_vars($class)), fn($p) => has_attribute_callback([$class, $p], $attribute, $callback)),
+			array_filter(array_keys(get_class_vars($class)), fn($p) => has_attribute_callback([$class, $p], $attribute, $callback, $matchChildAttributes)),
 			fn($accum, $p) => array_merge($accum, [$p]),
 			[]
 		);

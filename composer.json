@@ -22,11 +22,8 @@
     },
     "autoload": {
         "files": [
-            "src/PhpAttributes.php"
+            "src/Pattr.php"
         ]
-    },
-    "autoload-dev": {
-        "psr-4": { "brimshot\\phpattributes\\test\\": "test" }
     },
     "scripts": {
         "test": "phpunit test"

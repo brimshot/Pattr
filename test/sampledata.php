@@ -1,10 +1,10 @@
 <?php
 
-namespace brimshot\PhpAttributes\test;
+namespace brimshot\Pattr\test;
 
 // ~ Attributes
 
-use function brimshot\PhpAttributes\get_attribute;
+use function brimshot\Pattr\get_attribute;
 
 #[\Attribute]
 class UnusedAttribute {}
@@ -20,6 +20,9 @@ class SecondAttribute
 
 #[\Attribute]
 class ThirdAttribute {}
+
+#[\Attribute]
+class FourthAttribute {}
 
 #[\Attribute]
 class ParentAttribute {}
@@ -60,6 +63,9 @@ class ClassWithAttributes
 
 	#[FirstAttribute, ThirdAttribute]
 	public $thirdClassProperty = 3;
+
+	#[FourthAttribute]
+	private $privateProperty = 'private';
 
 	#[SecondAttribute]
 	public static $staticClassProperty = 'static';
