@@ -1,6 +1,6 @@
 # Pattr
 
-A straightforward and simple library for working with attributes in PHP.
+A straightforward and simple library for using attributes in PHP.
 
 ## Installation
 
@@ -27,13 +27,13 @@ use function brimshot\Pattr\has_attribute;
 
 The functions in the library operate on classes (or instantiated objects), public class properties, class methods, class constants and globally available functions.
 
-To get information about a class property or method, pass an array i.e. [ClassName, MethodName]
+To get information about a class or object property or method, pass the details as an array i.e. [Object, MethodName]
 
 ## Function list
 
-The following functions defined in the library:
-
 ---
+
+&nbsp;
 
 **has_attribute(mixed $item, string|array $attribute_or_array_of_attributes, bool $matchChildAttributes = true) : bool**
 
