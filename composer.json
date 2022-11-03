@@ -1,5 +1,5 @@
 {
-    "name": "brimshot/phpattributes",
+    "name": "brimshot/pattr",
     "description": "An easy way to work with attributes in PHP",
     "type": "library",
     "license": "MIT",

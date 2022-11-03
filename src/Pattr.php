@@ -2,11 +2,11 @@
 
 /* (c) Chris Brim 2022 - see LICENSE file */
 
-namespace brimshot\Pattr\internal {
+namespace brimshot\pattr\internal {
 
 	/**
 	 * @param mixed $item
-	 * @return \Reflector|null
+	 * @return \Reflector
 	 */
 	function _reflector_factory(mixed $item) : \Reflector
 	{
@@ -164,8 +164,6 @@ namespace brimshot\Pattr {
 		return null;
 	}
 
-	// todo: get_attributes_callback ... ?
-
 	/**
 	 * @param mixed $item
 	 * @return array
@@ -248,8 +246,6 @@ namespace brimshot\Pattr {
 	 */
 	function get_object_properties_with_attribute_callback(object $object, string $attribute, callable $callback, $matchChildAttributes = true) : array
 	{
-		// todo: unit tests on matching child properties
-
 		return array_reduce(
 			array_filter(array_keys(get_object_vars($object)), fn($p) => has_attribute_callback([$object, $p], $attribute, $callback, $matchChildAttributes)),
 			fn($accum, $p) => $accum + [$p => $object->$p],
