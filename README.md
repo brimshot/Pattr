@@ -320,7 +320,7 @@ print_r(get_object_properties_with_attribute($ship, Weapon::class));
 
 ---
 
-***get_object_properties_with_attribute_callback(object $object, string $attribute, callable $callback, $matchChildAttributes = true) : array***
+**get_object_properties_with_attribute_callback(object $object, string $attribute, callable $callback, $matchChildAttributes = true) : array**
 
 Returns an array of property names and their values from an instantiated object that have the provided attribute and that attribute satisfies the provided callback.
 
